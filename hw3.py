@@ -105,12 +105,14 @@ def forward_each(cnn, x):
 
 def accuracy(label, output):
     result = 0
+    counter = 0
     for i in range(0,10):
+        counter += 1.0
         value1 = label.data.cpu().numpy()[i]
         value2 = output.data.cpu().numpy()[i]
         if (value1 == value2):
             result += 1
-    result = result/10.0
+    result = result/counter
     return result
            
 
