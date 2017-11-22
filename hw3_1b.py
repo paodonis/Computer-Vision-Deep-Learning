@@ -18,6 +18,29 @@ from skimage import data
 from skimage.transform import rotate, SimilarityTransform, warp
 import random
 
+def randomTransform(lfwDataset_transformations, image):
+    number = random.randrange(0,10,1)
+    if (number < 7): # 0.7 probability of undergoing a transformation (since random returns a number from 0 to 9)
+        choose_transformation = random.randrange(0,2,1)
+        if (choose_transformation == 0): # rotation
+            angle = random.randrange(-25.0, 25.0, 1.0)
+            image = rotate(image, angle, resize = True)
+        else: # translation
+            factor1 = random.randrange(7,11,1)
+            sign1 = random.randrange(0,2,1)
+            if (sign1 == 0):
+                factor1 = factor1 * -1
+            factor2 = random.randrange(7,11,1)
+            sign2 = random.randrange(0,2,1)
+            if (sign2 == 0):
+                factor2 = factor2 * -1
+            transform = SimilarityTransform(translation=(factor1, factor2))
+            image = warp(image, transform)
+        max_value = np.amax(image)
+        image = image * 255/max_value
+
+    return image
+
 
 class lfwDataset_transformations(Dataset):
 
@@ -39,19 +62,21 @@ class lfwDataset_transformations(Dataset):
         return len(self.landmarks_frame)
 
     def __getitem__(self, idx):
-        img1_name = os.path.join(self.root_dir, self.landmarks_frame[idx][0]) # [idx][0]
+        img1_name = os.path.join(self.root_dir, self.landmarks_frame[idx][0])
         img2_name = os.path.join(self.root_dir, self.landmarks_frame[idx][1])
         
         image1 = Image.open(img1_name)
         image1 = np.asarray(image1)
         image1 = randomTransform(self, image1)
-        image1 = PIL.Image.fromarray(np.uint8(image1))
+        image1 = np.uint8(image1)
+        image1 = PIL.Image.fromarray(image1)
         image1 = image1.convert('RGB')
         
         image2 = Image.open(img2_name)
         image2 = np.asarray(image2)
         image2 = randomTransform(self, image2)
-        image2 = PIL.Image.fromarray(np.uint8(image2))
+        image2 = np.uint8(image2)
+        image2 = PIL.Image.fromarray(image2)
         image2 = image2.convert('RGB')
         
         label = self.landmarks_frame[idx][2]
@@ -94,23 +119,6 @@ class lfwDataset_for_testing(Dataset):
             image1 = self.transform(image1)
             image2 = self.transform(image2)
         return image1, image2, label
-
-
-def randomTransform(lfwDataset, image):
-    number = random.randrange(0,10,1)
-    if (number < 7): # 0.7 probability of undergoing a transformation (since random returns a number from 0 to 9)
-        choose_transformation = random.randrange(0,2,1)
-        if (choose_transformation == 0): # rotation
-            angle = random.randrange(0.0, 30.0, 1.0)
-            #print("angle", angle)
-            image = rotate(image, angle, resize = True)
-        else: # translation
-            factor = random.randrange(-10,10,1)
-            #print("translation factor", factor)
-            transform = SimilarityTransform(translation=(0, factor))
-            image = warp(image, transform)
-
-    return image
 
 class cnn(nn.Module):
 
@@ -157,7 +165,7 @@ def forward_each(cnn, x):
     x = cnn.conv4(x)
     x = F.relu(x)
     x = cnn.batch_norm4(x)
-    x = x.view((x.data.size())[0], -1) ### check this
+    x = x.view((x.data.size())[0], -1)
     x = cnn.linear1(x)
     x = F.relu(x)
     x = cnn.batch_norm5(x)
@@ -251,7 +259,7 @@ def testing(cnn_model):
         
     return test_loss, test_accuracy
     
-epochs = 6
+epochs = 8
 all_training_loss = list()
 all_testing_loss = list()
 all_training_accuracy = list()
