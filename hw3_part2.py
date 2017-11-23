@@ -3,7 +3,6 @@ import cv2
 from matplotlib import pyplot as plt
 from match_features import match_features
 from compute_proj_xform import compute_proj_xform
-from compute_affine_xform import compute_affine_xform
 import random
 
 

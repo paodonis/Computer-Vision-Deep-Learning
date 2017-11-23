@@ -105,14 +105,12 @@ def forward_each(cnn, x):
 
 def accuracy(label, output):
     result = 0
-    counter = 0
     for i in range(0,10):
-        counter += 1.0
         value1 = label.data.cpu().numpy()[i]
         value2 = output.data.cpu().numpy()[i]
         if (value1 == value2):
             result += 1
-    result = result/counter
+    result = result/10.0
     return result
            
 
@@ -194,14 +192,14 @@ all_testing_accuracy = list()
 for epoch in range(epochs):
     train_loss, train_accuracy = training(cnn_model)
     train_loss = train_loss
-    train_accuracy = train_accuracy/100.0
+    train_accuracy = train_accuracy
     print("train loss", train_loss)
     print("train accuracy", train_accuracy)
     all_training_loss.append(train_loss)
     all_training_accuracy.append(train_accuracy)
     test_loss, test_accuracy = testing(cnn_model)
     test_loss = test_loss
-    test_accuracy = test_accuracy /100.0
+    test_accuracy = test_accuracy
     print("test loss", test_loss)
     print("test accuracy", test_accuracy)
     all_testing_loss.append(test_loss)
