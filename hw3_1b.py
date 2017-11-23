@@ -259,7 +259,7 @@ def testing(cnn_model):
         
     return test_loss, test_accuracy
     
-epochs = 8
+epochs = 30
 all_training_loss = list()
 all_testing_loss = list()
 all_training_accuracy = list()
