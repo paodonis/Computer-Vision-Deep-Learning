@@ -115,7 +115,7 @@ def accuracy(label, output):
            
 
 learning_rate = 1e-6
-criterion = nn.BCELoss(weight=None, size_average=True)
+criterion = nn.BCELoss()
 cnn_model = cnn().cuda()
 
 transform = transforms.Compose([transforms.Scale((128,128)), transforms.ToTensor()])

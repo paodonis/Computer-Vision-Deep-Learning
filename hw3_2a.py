@@ -18,94 +18,8 @@ from skimage import data
 from skimage.transform import rotate, SimilarityTransform, warp
 import random
 
-def randomTransform(lfwDataset_transformations, image):
-    prob = random.randrange(0,10,1)
-    check = 0
-    if (prob < 7):
-        angle = random.randrange(-25.0, 25.0, 1.0)
-        image = rotate(image, angle, resize = True)
-        check +=1
-    prob = random.randrange(0,10,1)
-    if (prob < 7):
-        factor1 = random.randrange(7,11,1)
-        sign1 = random.randrange(0,2,1)
-        if (sign1 == 0):
-            factor1 = factor1 * -1
-        factor2 = random.randrange(7,11,1)
-        sign2 = random.randrange(0,2,1)
-        if (sign2 == 0):
-            factor2 = factor2 * -1
-        transform = SimilarityTransform(translation=(factor1, factor2))
-        image = warp(image, transform)
-        check += 1
 
-    if (check > 0):           
-        max_value = np.amax(image)
-
-        (vertical,horizontal,colors) = np.shape(image)
-        new_image = np.zeros((vertical,horizontal, colors), dtype = "float32")
-
-        image = image * 255/max_value
-
-    return image
-
-
-class lfwDataset_transformations(Dataset):
-
-    def __init__(self, csv_file, root_dir, transformation):
-
-        self.root_dir = root_dir
-        self.transform = transformation[0]
-        self.landmarks_frame = self.read_each_name(csv_file)
-        self.transformation1 = transformation[1]
-
-    def read_each_name(self, file_name):
-        with open(file_name) as f:
-            info = open(file_name).read().split()
-            all_names = [[None for _ in range(3)] for _ in range(len(info)/3)]
-            for x in range(0,len(info)):
-                all_names[x/3][x%3] = info[x]
-            return all_names
-   
-    def __len__(self):
-        return len(self.landmarks_frame)
-
-    def __getitem__(self, idx):
-        img1_name = os.path.join(self.root_dir, self.landmarks_frame[idx][0])
-        img2_name = os.path.join(self.root_dir, self.landmarks_frame[idx][1])
-        
-        image1 = Image.open(img1_name)
-        
-        prob = random.randrange(0,10,1)
-        if (prob < 7):
-            image1 = self.transformation1(image1)
-        
-        image1 = np.asarray(image1)
-        image1 = randomTransform(self, image1)
-        image1 = np.uint8(image1)
-        image1 = PIL.Image.fromarray(image1)
-        image1 = image1.convert('RGB')
-        
-        image2 = Image.open(img2_name)
-
-        prob = random.randrange(0,10,1)
-        if (prob < 7):
-            image2 = self.transformation1(image2)
-            
-        image2 = np.asarray(image2)
-        image2 = randomTransform(self, image2)
-        image2 = np.uint8(image2)
-        image2 = PIL.Image.fromarray(image2)
-        image2 = image2.convert('RGB')
-        
-        label = self.landmarks_frame[idx][2]
-        if self.transform is not None:
-            image1 = self.transform(image1)
-            image2 = self.transform(image2)
-        return image1, image2, label
-
-
-class lfwDataset_for_testing(Dataset):
+class lfwDataset(Dataset):
 
     def __init__(self, csv_file, root_dir, transformation):
 
@@ -163,8 +77,9 @@ class cnn(nn.Module):
     def forward(self, image1, image2):
         image1 = forward_each(self, image1)
         image2 = forward_each(self, image2)
-        both_results = torch.cat((image1, image2), 1)
-        results = F.sigmoid(self.linear2(both_results))
+        #both_results = torch.cat((image1, image2), 1)
+        #results = F.sigmoid(self.linear2(both_results))
+        results = F.pairwise_distance(image1, image2)
         
         return results
 
@@ -191,37 +106,70 @@ def forward_each(cnn, x):
 
     return x
 
+'''
+def accuracy(label, output): # find the average and check which one is smaller than and make it a 1
+    # find average
+    total_sum = 0
+    average = 0
+    result = 0
+    counter1 = 0
+    counter2 = 0
+    number_of_ones = 0.0
+    for i in range(0,label.size()[0]):
+        if (label.data.cpu().numpy()[i] == 1.0):
+            number_of_ones += 1.0
+    factor = 6.0 + number_of_ones
+    divisor = 12.0 + factor/3.0
+    classification = np.zeros((label.size()[0],1))
+    for i in range(0,label.size()[0]):
+        counter1 += 1
+        total_sum += output.data.cpu().numpy()[i]
+    average = total_sum/divisor
+    # mas 1 quiero el average mas bajo
+    for i in range(0,label.size()[0]):
+        if (output.data.cpu().numpy()[i] >= average):
+            classification[i] = 1.0
+    #print("classification", classification)
+    for i in range(0,label.size()[0]):
+        counter2 += 1
+        if(label.data.cpu().numpy()[i] == classification[i]):
+            result += 1.0
+    result = result/counter2
+
+    return result
+'''
 
 def accuracy(label, output):
-    result = 0
     counter = 0
+    result = 0
+    classification = np.zeros((label.size()[0],1))
+   
     for i in range(0, label.size()[0]):
-        counter += 1.0
-        value1 = label.data.cpu().numpy()[i]
-        value2 = output.data.cpu().numpy()[i]
-        if (value1 == value2):
-            result += 1
+        if (output.data.cpu().numpy()[i] <= 24.0):
+            classification[i] = 1.0
+            
+    for i in range(0, label.size()[0]):
+        counter += 1
+        if(label.data.cpu().numpy()[i] == classification[i]):
+            result += 1.0
     result = result/counter
+
     return result
 
 
-learning_rate = 1e-6
-criterion = nn.BCELoss()
+learning_rate = 1e-4
 cnn_model = cnn().cuda()
 
 transform = transforms.Compose([transforms.Scale((128,128)), transforms.ToTensor()])
-
-aug_transform_1 = transforms.Compose([transforms.RandomHorizontalFlip()])
-
-#scale_transform = transforms.Compose([transforms.Scale(128*factor, 128*factor), transforms.CenterCrop(size), transforms.Scale((128,128))])
 
 optimizer = torch.optim.Adam(cnn_model.parameters(), lr=learning_rate)
 
 
 def training(cnn_model):
+    margin = 1.0
     train_loss = 0
-    dataset = lfwDataset_transformations(csv_file='train.txt',
-                                    root_dir='lfw/', transformation = [transform, aug_transform_1])
+    dataset = lfwDataset(csv_file='train.txt',
+                                    root_dir='lfw/', transformation = transform)
 
     dataloader = DataLoader(dataset, batch_size=12,
                         shuffle=True, num_workers=12)
@@ -237,18 +185,19 @@ def training(cnn_model):
         label1 = label1.type(torch.FloatTensor)
         label = Variable(label1).cuda()
         output = cnn_model(image1, image2)
+        loss = torch.mean((1-label) * torch.pow(output,2) + (label) * torch.pow(torch.clamp(margin - output,min = 0.0), 2))
+        train_accuracy += accuracy(label, output)
+
+        train_loss += loss.data[0]
+        #print("train loss", train_loss)
         optimizer.zero_grad()
-        loss = criterion(output, label)
         loss.backward()
         optimizer.step()
-        output = torch.round(output)
-        train_accuracy += accuracy(label, output)
-        train_loss += loss.data[0]
         iterations += 1.0
     train_loss = train_loss/iterations
     train_accuracy = train_accuracy/iterations
+    #print("output", output, "label", label)
     #torch.save(cnn_model.state_dict(), 'my_weights')
-
 
     return train_loss, train_accuracy
 
@@ -256,13 +205,14 @@ def training(cnn_model):
 def testing(cnn_model):
     #cnn_model.load_state_dict(torch.load('my_weights'))
 
-    dataset = lfwDataset_for_testing(csv_file='test.txt',
+    dataset = lfwDataset(csv_file='test.txt',
                                     root_dir='lfw/', transformation = transform)
     dataloader = DataLoader(dataset, batch_size=12,
                         shuffle=True, num_workers=12)
     test_loss = 0
     test_accuracy = 0
     iterations = 0
+    margin = 1.0
 
     for each in dataloader:
         image1 = Variable(each[0]).cuda()
@@ -272,9 +222,9 @@ def testing(cnn_model):
         label1 = label1.type(torch.FloatTensor)
         label = Variable(label1).cuda()
         output = cnn_model(image1, image2)
-        loss = criterion(output, label)
-        output = torch.round(output)
+        loss = torch.mean((1-label) * torch.pow(output,2) + (label) * torch.pow(torch.clamp(margin - output,min = 0.0), 2))
         test_accuracy += accuracy(label, output)
+        each_test_accuracy = accuracy(label, output)
         test_loss += loss.data[0]
         iterations += 1.0
     test_loss = test_loss/iterations
@@ -282,14 +232,14 @@ def testing(cnn_model):
         
     return test_loss, test_accuracy
     
-epochs = 35
+epochs = 30
 all_training_loss = list()
 all_testing_loss = list()
 all_training_accuracy = list()
 all_testing_accuracy = list()
 
 for epoch in range(epochs):
-    print("epoch", epoch)
+    print("epoch: ", epoch)
     train_loss, train_accuracy = training(cnn_model)
     train_loss = train_loss
     train_accuracy = train_accuracy
