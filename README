@@ -1,0 +1,19 @@
+
+weights available at: 
+https://drive.google.com/open?id=1kEgwvfcUYaqYQEAB8qFD_dOSiSwvs9H_
+
+In order to run the programs use the following syntax:
+python p1a.py --save WEIGHTS_FILE or python p1a.py --load my_weights1
+python p1b.py --save WEIGHTS_FILE or python p1b.py --load my_weights2
+It is necessary to have cuda for the programs to run.
+
+Epochs over the data:
+p1a without augmentation: 10 epochs would be enough since the training accuracy goes all the way to almost 1 with the first 10 epochs and the loss stops decreasing significantly.
+p1a with augmentation: around 35 epochs are necessary since the loss is slowly decreasing and the accuracy is slowly increasing. At 35 epochs, the training loss becomes even more stable. 
+p1b without augmentation: 30 epochs showed the great performance of this model. After 25 epochs, the testing accuracy stops increasing even though the training accuracy keeps increasing.
+p1b with augmentation: For this problem, the learning rate used was higher so at epoch 20, the training loss was as low as it gets with just small variations.
+
+Margin choice: I started using margin = 1.0 and accuracy wasn’t increasing. Therefore, I decided to change it to margin = 2.0 which gave better results. I read about margins that change throughout the training for better results but I decided to keep it simple for this section of the homework.
+
+See pdf for comparison of results, graphs, and report.
+
